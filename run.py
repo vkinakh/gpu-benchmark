@@ -59,10 +59,18 @@ def run(args):
                 with open("temp_config.yaml", "w") as f:
                     yaml.dump(config_copy, f)
 
-                path_log = path_out / f"vision_{model}_n_gpus_{n_gpus}_precision_{precision}.log"
-                path_monitor = path_out / f"vision_{model}_n_gpus_{n_gpus}_precision_{precision}_monitor.csv"
+                path_log = (
+                    path_out
+                    / f"vision_{model}_n_gpus_{n_gpus}_precision_{precision}.log"
+                )
+                path_monitor = (
+                    path_out
+                    / f"vision_{model}_n_gpus_{n_gpus}_precision_{precision}_monitor.csv"
+                )
 
-                curr_batch_size = vision_batch_size if precision == "no" else vision_batch_size * 2
+                curr_batch_size = (
+                    vision_batch_size if precision == "no" else vision_batch_size * 2
+                )
 
                 # run
                 subprocess.run(
@@ -107,9 +115,13 @@ def run(args):
                 yaml.dump(config_copy, f)
 
             path_log = path_out / f"language_n_gpus_{n_gpus}_precision_{precision}.log"
-            path_monitor = path_out / f"language_n_gpus_{n_gpus}_precision_{precision}_monitor.csv"
+            path_monitor = (
+                path_out / f"language_n_gpus_{n_gpus}_precision_{precision}_monitor.csv"
+            )
 
-            curr_batch_size = language_batch_size if precision == "no" else language_batch_size * 2
+            curr_batch_size = (
+                language_batch_size if precision == "no" else language_batch_size * 2
+            )
 
             # run
             subprocess.run(
@@ -146,8 +158,10 @@ def run(args):
             with open("temp_config.yaml", "w") as f:
                 yaml.dump(config_copy, f)
 
-            path_log = path_out / f"llm_{model}_n_gpus_{n_gpus}.log"
-            path_monitor = path_out / f"llm_{model}_n_gpus_{n_gpus}_monitor.csv"
+            path_log = path_out / f"llm_{model.replace('/', '-')}_n_gpus_{n_gpus}.log"
+            path_monitor = (
+                path_out / f"llm_{model.replace('/', '-')}_n_gpus_{n_gpus}_monitor.csv"
+            )
 
             # run
             subprocess.run(

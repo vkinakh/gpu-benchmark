@@ -107,9 +107,7 @@ def train_language_model(
 
         total_eval_loss = torch.mean(accelerator.gather(total_eval_loss))
         total_eval_loss /= len(dl_test)
-        accelerator.print(
-            f"Epoch: {epoch}. Loss: {total_eval_loss}, acc: {acc.compute()}"
-        )
+        logger.info(f"Epoch: {epoch}. Loss: {total_eval_loss}, acc: {acc.compute()}")
         acc.reset()
         eval_time = time.time() - start_time_eval
         logger.info(f"Epoch {epoch}. Evaluation time: {eval_time:.3f} seconds")

@@ -2,6 +2,7 @@
 __pycache__/
 
 system_usage_log.csv
+temp_config.yaml
 
 *.jpg
 *.png
