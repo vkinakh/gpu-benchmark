@@ -1,0 +1,8 @@
+.idea/
+__pycache__/
+
+system_usage_log.csv
+
+*.jpg
+*.png
+*.log
