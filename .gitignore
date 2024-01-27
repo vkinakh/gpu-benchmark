@@ -7,3 +7,5 @@ temp_config.yaml
 *.jpg
 *.png
 *.log
+*.csv
+*.yaml

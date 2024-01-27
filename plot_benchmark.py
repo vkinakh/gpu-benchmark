@@ -82,4 +82,4 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str, required=True)
     cli_args = parser.parse_args()
 
-    plot_benchmark(cli_args.csv_file, cli_args.out_prefix)
+    plot_benchmark(cli_args.csv_file, cli_args.output_dir)
