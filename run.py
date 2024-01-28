@@ -5,9 +5,11 @@ import yaml
 import copy
 import argparse
 import datetime
+import threading
 
 from train_vision_models import MODEL_NAMES as VISION_MODEL_NAMES
 from llm_inference import LLM_MODEL_NAMES
+from monitoring import setup_monitoring_logger, monitor_resources_logging
 
 
 def setup_distributed_config(config: Dict, n_gpus: int) -> Dict:
@@ -35,6 +37,7 @@ def run(args):
     language_lr = args.language_lr
     n_workers = args.n_workers
     max_n_gpus = args.n_gpus
+    update_time = args.update_time
 
     datetime_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     path_out = Path(f"benchmark_results/{datetime_str}")
@@ -72,6 +75,17 @@ def run(args):
                     vision_batch_size if precision == "no" else vision_batch_size * 2
                 )
 
+                # Initialize the logger
+                logger = setup_monitoring_logger(str(path_monitor))
+                stop_event = threading.Event()
+
+                # start monitoring
+                monitor_thread = threading.Thread(
+                    target=monitor_resources_logging,
+                    args=(stop_event, logger, update_time),
+                )
+                monitor_thread.start()
+
                 # run
                 subprocess.run(
                     [
@@ -92,8 +106,6 @@ def run(args):
                         path_vision_data,
                         "--log",
                         str(path_log),
-                        "--monitor_log",
-                        str(path_monitor),
                         "--workers",
                         str(n_workers),
                         "--lr",
@@ -102,6 +114,10 @@ def run(args):
                         str(vision_class_num),
                     ]
                 )
+
+                # stop monitoring
+                stop_event.set()
+                monitor_thread.join()
 
     # language tasks
     for n_gpus in range(1, max_n_gpus + 1):
@@ -123,6 +139,16 @@ def run(args):
                 language_batch_size if precision == "no" else language_batch_size * 2
             )
 
+            # Initialize the logger
+            logger = setup_monitoring_logger(str(path_monitor))
+            stop_event = threading.Event()
+
+            # start monitoring
+            monitor_thread = threading.Thread(
+                target=monitor_resources_logging, args=(stop_event, logger, update_time)
+            )
+            monitor_thread.start()
+
             # run
             subprocess.run(
                 [
@@ -139,14 +165,16 @@ def run(args):
                     str(curr_batch_size),
                     "--log",
                     str(path_log),
-                    "--monitor_log",
-                    str(path_monitor),
                     "--workers",
                     str(n_workers),
                     "--lr",
                     str(language_lr),
                 ]
             )
+
+            # stop monitoring
+            stop_event.set()
+            monitor_thread.join()
 
     # llm tasks
     for n_gpus in range(1, max_n_gpus + 1):
@@ -163,6 +191,16 @@ def run(args):
                 path_out / f"llm_{model.replace('/', '-')}_n_gpus_{n_gpus}_monitor.csv"
             )
 
+            # Initialize the logger
+            logger = setup_monitoring_logger(str(path_monitor))
+            stop_event = threading.Event()
+
+            # start monitoring
+            monitor_thread = threading.Thread(
+                target=monitor_resources_logging, args=(stop_event, logger, update_time)
+            )
+            monitor_thread.start()
+
             # run
             subprocess.run(
                 [
@@ -177,10 +215,12 @@ def run(args):
                     model,
                     "--log",
                     str(path_log),
-                    "--monitor_log",
-                    str(path_monitor),
                 ]
             )
+
+            # stop monitoring
+            stop_event.set()
+            monitor_thread.join()
 
 
 if __name__ == "__main__":
@@ -197,5 +237,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--language_batch_size", type=int, default=16)
     parser.add_argument("--language_lr", type=float, default=2e-5)
+    parser.add_argument("--update_time", type=float, default=0.1)
     cli_args = parser.parse_args()
     run(cli_args)
