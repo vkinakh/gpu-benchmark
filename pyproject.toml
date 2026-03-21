@@ -44,4 +44,3 @@ py-modules = [
   "train_vision_models",
   "utils",
 ]
-script-files = ["benchmark.py", "run.py", "plot_benchmark.py"]
