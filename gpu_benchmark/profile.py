@@ -231,6 +231,9 @@ def main():
         for path in (out / "training").glob("*/result.json")
     ]
     (out / "summary.json").write_text(json.dumps(summary, indent=2))
+    from .report import write_report
+
+    write_report(out / "training")
     print(f"Profile complete: {out}", flush=True)
 
 

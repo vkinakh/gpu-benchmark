@@ -64,3 +64,32 @@ def test_warmup_excluded_and_short_loader_repeated(tmp_path, monkeypatch):
     assert result["steps"] == 3
     assert result["samples"] == 6
     assert result["samples_per_second"] > 0
+
+
+def test_report_excludes_failures_and_uses_median(tmp_path):
+    import json
+    from gpu_benchmark.report import summarize
+
+    for i, (status, rate) in enumerate(
+        [("success", 10), ("success", 30), ("failed", 1000)]
+    ):
+        directory = tmp_path / str(i)
+        directory.mkdir()
+        (directory / "result.json").write_text(
+            json.dumps(
+                dict(
+                    task="vision",
+                    model="resnet50",
+                    precision="fp32",
+                    gpus=1,
+                    status=status,
+                    samples_per_second=rate,
+                    peak_memory_bytes=100,
+                )
+            )
+        )
+    result = summarize(tmp_path)
+    assert len(result) == 1
+    assert result[0]["samples_per_second"] == 20
+    assert result[0]["repetitions"] == 2
+    assert result[0]["scaling_efficiency"] == 1
