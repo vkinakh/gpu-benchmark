@@ -1,6 +1,7 @@
 import time
 from .runtime import (
     initialize,
+    record_validation,
     training_batches,
     validation_batches,
     synthetic,
@@ -132,6 +133,9 @@ def train_language_model(
 
         total_eval_loss /= total_samples
         logger.info(f"Epoch: {epoch}. Loss: {total_eval_loss}, acc: {acc.compute()}")
+        record_validation(accelerator, total_eval_loss, acc.compute(), total_samples)
         acc.reset()
         eval_time = time.time() - start_time_eval
         logger.info(f"Epoch {epoch}. Evaluation time: {eval_time:.3f} seconds")
+
+    accelerator.end_training()

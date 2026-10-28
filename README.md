@@ -1,110 +1,49 @@
 # GPU Benchmark
 
-Efficiently evaluate your GPU's deep learning performance with GPU Benchmark, leveraging `pytorch` and `accelerate` for a broad range of models.
+Reproducible PyTorch/Accelerate training and GPU hardware measurements. Supports ResNet50, ViT-B/L, ConvNeXt-base/large, and DistilBERT on IMDb. Legacy LLM inference remains available through the single-benchmark command.
 
-# Introduction
-
-Maximize your GPU's potential in deep learning with this repository, providing comprehensive benchmarking scripts and performance insights.
-
-# Features
-
-- Utilize `accelerate` for deep learning training.
-- Precision options: `fp32`, `fp16`, `bf16`.
-- Scale across GPUs (1 to max available).
-- Log key metrics:
-    - CPU, RAM, GPU usage
-    - GPU memory, temperature
-- Plot system metrics.
-- Log training/validation metrics.
-- Support various models:
-    - Vision: ResNet50, ViT-B-16-224, ViT-L-16-224, ConvNext-base, ConvNext-large
-    - Language: [distilbert-base-uncased](https://huggingface.co/distilbert-base-uncased)
-    - LLM Inference: [meta-llama/Llama-2-7b-chat-hf](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf), [sgugger/sharded-gpt-j-6B](https://huggingface.co/sgugger/sharded-gpt-j-6B)
-
-# Files
-
-- `train_vision_models.py`: Train/evaluate vision models.
-- `train_language_models.py`: Train/evaluate language models.
-- `llm_inference.py`: Perform LLM inference.
-- `benchmark.py`: Launch benchmarking.
-- `run.py`: Execute multiple benchmarks with varied settings.
-
-# Usage
-
-## Environment Setup
-
-Ensure NVIDIA drivers, CUDA, and `conda` are installed.
-
-### Create Conda Environment
-```bash
-conda env create -f environment.yml
-```
-
-For vision tasks, download ImageNet-like dataset, [imagenette](https://github.com/fastai/imagenette) - recommended
-
-### Run with uvx
-
-You can launch project scripts with [`uvx`](https://docs.astral.sh/uv/) without changing runtime code.
-
-From the repository root:
-```bash
-uvx --python 3.11 --from . gpu-benchmark --help
-uvx --python 3.11 --from . gpu-benchmark-run --help
-uvx --python 3.11 --from . gpu-benchmark-plot --help
-```
-
-## Single Benchmark
-
-Prepare accelerate config [default_config.yaml](default_config.yaml).
-
-Execute
-```bash
-accelerate launch --config_file=<config_file> benchmark.py \
-                  --model=<model name> \                      # only needed for vision task, see MODEL_NAMES
-                  --epochs=<n epochs> \                       # default: 5
-                  --batch_size=<batch_size> \                 # default: 32
-                  --data=<path/to/data> \                     # only needed for vision task, path to dataset, should have train and val subfolders with class subfolders
-                  --monitor_log=<path/to/monitor/csv/file> \  # default: system_usage_log.csv
-                  --log=<path/to/log/file> \                  # default: log.log
-                  --workers=<n workers> \                     # default: 16
-                  --lr=<learning rate> \                      # 3e-4
-                  --classes=<n classes>                       # only needed for vision task, number of classes in dataset
-```
-
-## Multiple Benchmarks
-
-Example to run all vision models, language model and LLM inference with multiple GPUs and precisions.
+## Install
 
 ```bash
-python run.py --n_gpus=<number of GPUs> \
-              --precisions=<list of precisions> \   # choices: no, fp16, bf16
-              --n_epochs=<n epochs> \               # default: 5
-              --n_workers=<n workers> \             # default: 16
-              --vision_batch_size=<batch size> \    # default: 32
-              --vision_lr=<lr> \                    # default: 3e-4
-              --vision_class_num=<n classes> \      # n classes for vision tasks
-              --vision_data=<path/to/dataset> \     # path to vision dataset
-              --language_batch_size=<batch size> \  # default: 16
-              --language_lr=<lr> \                  # default: 2e-5
+uv sync --frozen --extra fp8 --python 3.11
+uv run --frozen --extra fp8 gpu-benchmark --help
+uvx --python 3.11 --from '.[fp8]' gpu-benchmark-run --help
 ```
 
-Results of the benchmark, can be found in `benchmark_results/%Y-%m-%d_%H-%M-%S` folder with a timestamp
+The optional `fp8` extra installs the matching torchao backend. Runtime commands also work from installed wheels outside the repository. Original root Python scripts remain wrappers for compatibility.
 
-## Visualizing System Information
-
-The script will create plots of system information:
-- CPU usage, RAM usage
-- GPU temperature, GPU usage, GPU memory usage per each GPU
+## Training matrix
 
 ```bash
-python plot_benchmark.py --csv_file=<path/to/csv/file> --output_dir=<path/to/output/directory>
+uv run --frozen --extra fp8 gpu-benchmark-run \
+  --gpu-counts 1 2 3 4 --precisions fp32 tf32 fp16 bf16 fp8 bf16-compiled \
+  --vision_data /path/to/imagenette2 --vision_class_num 10 \
+  --steps 100 --warmup-steps 10 --validation-steps 25 --repetitions 3 \
+  --output-dir /path/to/results
 ```
 
-## Reproducible H200 runs
+Vision data requires separate `train/` and `val/` class directories. `--tasks vision` or `--tasks language` selects a workload; `--models` selects vision models. Precision comparisons use the same per-GPU batches (64 vision, 16 language); they are configurable. `no` remains an alias for FP32. `--synthetic` avoids datasets and pretrained weights. `--resume` requires the same source and configuration and retries incomplete cases.
 
-Install Python 3.11 and the locked optional FP8 stack: `uv sync --frozen --extra fp8`.
-Run `uv run --frozen --extra fp8 python -m gpu_benchmark.profile smoke --output /path/to/smoke` before running the `full` profile.
-Full profiles require Imagenette at `data/imagenette2-320` (distinct train/val folders), and download/cache IMDb and pretrained models through Hugging Face.
-The runner accepts `--gpu-counts 1 2 3 4`, `--steps`, `--warmup-steps`, `--validation-steps`, `--repetitions`, `--synthetic`, and `--resume`.
-Every case has process/training logs, telemetry, metrics and explicit status. FP8 is limited to transformer workloads and uses torchao; compare it with the matched `bf16-compiled` mode. FP32 disables TF32, while TF32 explicitly permits it.
-The full performance matrix measures bounded steps, not convergence or complete epochs. Hardware results report dense compute, read+write device copy bandwidth, host transfers and NCCL payload bandwidth (including buffer reset).
+FP32 disables TF32; TF32 permits it for matrix and convolution operations. FP8 initially supports ViT and DistilBERT and records the converted layer count. Compare FP8 with `bf16-compiled` to control for compilation. Other models explicitly skip FP8. Every case records measured-step throughput, latency, memory, process logs, and NVML telemetry. Warmup is excluded. The suite measures performance, not convergence.
+
+## Cactus profiles
+
+```bash
+# Smoke first: synthetic data, all GPU counts and supported modes.
+uv run --frozen --extra fp8 python -m gpu_benchmark.profile smoke --output /path/to/smoke
+# Cache IMDb, tokenization and model weights; also downloads Imagenette-320.
+uv run --frozen --extra fp8 python -m gpu_benchmark.prepare_data
+# Full real-data run; use the original Imagenette dataset when available.
+uv run --frozen --extra fp8 python -m gpu_benchmark.profile full \
+  --data /path/to/imagenette2 --output /path/to/full
+```
+
+Profiles include GEMM (FP64/FP32/TF32/FP16/BF16/FP8), GPU and host transfer bandwidth, GPU-pair transfers, and NCCL all-reduce. The full profile calibrates a uniform step count between 20 and 100, performs a separate batch-capacity sweep, and enforces an eight-hour wall-clock budget. Preserve partial results when the budget expires.
+
+**Cactus transport workaround:** profiles set `NCCL_P2P_DISABLE=1` because native NCCL P2P currently stalls with the GPUs in translated `DMA-FQ` IOMMU domains. NCCL results therefore characterize shared-memory transport. An administrator must resolve and validate the host configuration before collecting native P2P results. Ordinary matrix runs inherit the caller's NCCL settings. Manifests record those settings.
+
+Run directories contain per-case JSON, logs, telemetry, dependency metadata and GPU topology. They are artifacts; existing historical results are unchanged. Hardware rates distinguish FLOP/s, memory read+write traffic, and transfer payload bytes/s. `gpu-benchmark-plot --csv_file /path/to/monitor.csv --output_dir /path/to/plots` plots telemetry.
+
+```bash
+uv run --frozen --extra fp8 pytest -q
+```

@@ -30,6 +30,7 @@ def measure(operation, warmup=10, steps=100):
 
 
 def run(args):
+    torch.manual_seed(42)
     rank = int(os.environ.get("LOCAL_RANK", "0"))
     torch.cuda.set_device(rank)
     device = torch.device("cuda", rank)
@@ -105,7 +106,7 @@ def run(args):
                         relative_error=error,
                     )
                 except (RuntimeError, NotImplementedError) as exc:
-                    if mode != "fp8":
+                    if mode != "fp8" or "Numerical error" in str(exc):
                         raise
                     rows.append(
                         dict(

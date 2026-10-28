@@ -65,8 +65,9 @@ def run(args):
         ).strip()
     except subprocess.CalledProcessError:
         commit = os.environ.get("GPUBENCH_COMMIT", "installed-wheel")
+    transport = {k: v for k, v in os.environ.items() if k.startswith("NCCL_")}
     identity = hashlib.sha256(
-        json.dumps([commit, configuration], sort_keys=True).encode()
+        json.dumps([commit, configuration, transport], sort_keys=True).encode()
     ).hexdigest()
     manifest = out / "manifest.json"
     if manifest.exists():

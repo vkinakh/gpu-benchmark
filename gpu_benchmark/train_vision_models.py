@@ -1,6 +1,12 @@
 import time
 from pathlib import Path
-from .runtime import initialize, training_batches, validation_batches, synthetic
+from .runtime import (
+    record_validation,
+    initialize,
+    training_batches,
+    validation_batches,
+    synthetic,
+)
 
 from tqdm.auto import trange
 
@@ -88,6 +94,13 @@ def train_vision_model(
         else datasets.ImageFolder(Path(path_to_data) / "val", transform=trans_val)
     )
 
+    if not synthetic() and (
+        ds_train.classes != ds_val.classes or len(ds_train.classes) != n_classes
+    ):
+        raise ValueError(
+            "Train/val class names must match the requested number of classes"
+        )
+
     dl_train = DataLoader(
         ds_train,
         batch_size=batch_size,
@@ -144,6 +157,9 @@ def train_vision_model(
             acc.update(logits, y)
         total_loss /= total_samples
         logger.info(f"Epoch {epoch}. Loss: {total_loss}, acc: {acc.compute()}")
+        record_validation(accelerator, total_loss, acc.compute(), total_samples)
         acc.reset()
         eval_epoch_time = time.time() - start_time_eval_epoch
         logger.info(f"Epoch {epoch}. Evaluation time: {eval_epoch_time:.3f} seconds")
+
+    accelerator.end_training()

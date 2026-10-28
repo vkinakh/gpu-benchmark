@@ -86,6 +86,16 @@ def training_batches(loader, accelerator):
             torch.cuda.max_memory_allocated() if torch.cuda.is_available() else 0
         ),
     )
+    latencies = (
+        accelerator.gather(torch.tensor(latencies, device=accelerator.device))
+        .cpu()
+        .tolist()
+    )
+    row["peak_memory_bytes"] = int(
+        accelerator.gather(
+            torch.tensor([row["peak_memory_bytes"]], device=accelerator.device)
+        ).max()
+    )
     row["latency_p50_seconds"] = statistics.median(latencies)
     row["latency_p95_seconds"] = sorted(latencies)[
         min(len(latencies) - 1, int(0.95 * len(latencies)))
@@ -116,3 +126,16 @@ class TokenData(torch.utils.data.Dataset):
             attention_mask=torch.ones(512, dtype=torch.long),
             labels=torch.tensor(index % 2),
         )
+
+
+def record_validation(accelerator, loss, accuracy, samples):
+    filename = os.environ.get("GPUBENCH_METRICS")
+    if accelerator.is_main_process and filename:
+        path = Path(filename)
+        metrics = json.loads(path.read_text())
+        metrics.update(
+            validation_loss=float(loss),
+            validation_accuracy=float(accuracy),
+            validation_samples=samples,
+        )
+        path.write_text(json.dumps(metrics, indent=2))

@@ -15,3 +15,5 @@ temp_config.yaml
 build/
 dist/
 .pytest_cache/
+
+data/
