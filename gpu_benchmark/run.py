@@ -172,6 +172,8 @@ def run(args):
             str(
                 args.vision_batch_size if task == "vision" else args.language_batch_size
             ),
+            "--lr",
+            str(args.vision_lr if task == "vision" else args.language_lr),
             "--workers",
             str(args.n_workers),
             "--log",
@@ -253,6 +255,8 @@ def main():
     p.add_argument("--resume", action="store_true")
     p.add_argument("--vision_data", default="")
     p.add_argument("--vision_class_num", type=int, default=10)
+    p.add_argument("--vision_lr", type=float, default=3e-4)
+    p.add_argument("--language_lr", type=float, default=2e-5)
     p.add_argument("--vision_batch_size", type=int, default=64)
     p.add_argument("--language_batch_size", type=int, default=16)
     p.add_argument("--n_workers", type=int, default=4)
