@@ -16,7 +16,6 @@ from accelerate.utils import compute_module_sizes
 
 from .utils import setup_logger
 
-
 IMG_SIZE = 224
 IMG_RESIZE = 256
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -55,9 +54,8 @@ def train_vision_model(
     model_loading_time = time.time() - start_time_model_logging
     logger.info(f"Model loading time: {model_loading_time:.3f} seconds")
 
-    module_size = compute_module_sizes(model)[""]
+    module_size = sum(p.numel() for p in model.parameters())
     logger.info(f"Model size: {module_size / 1e6:.3f}M parameters")
-
 
     trans_train = transforms.Compose(
         [
@@ -77,8 +75,18 @@ def train_vision_model(
         ]
     )
 
-    ds_train = datasets.FakeData(size=4096, num_classes=n_classes, transform=trans_train) if synthetic() else datasets.ImageFolder(Path(path_to_data) / "train", transform=trans_train)
-    ds_val = datasets.FakeData(size=4096, num_classes=n_classes, transform=trans_val, random_offset=4096) if synthetic() else datasets.ImageFolder(Path(path_to_data) / "val", transform=trans_val)
+    ds_train = (
+        datasets.FakeData(size=4096, num_classes=n_classes, transform=trans_train)
+        if synthetic()
+        else datasets.ImageFolder(Path(path_to_data) / "train", transform=trans_train)
+    )
+    ds_val = (
+        datasets.FakeData(
+            size=4096, num_classes=n_classes, transform=trans_val, random_offset=4096
+        )
+        if synthetic()
+        else datasets.ImageFolder(Path(path_to_data) / "val", transform=trans_val)
+    )
 
     dl_train = DataLoader(
         ds_train,
@@ -111,6 +119,8 @@ def train_vision_model(
                 logits = model(x)
                 loss = criterion(logits, y)
             # Backward pass in full precision
+            if not torch.isfinite(loss):
+                raise RuntimeError("Non-finite training loss")
             accelerator.backward(loss)
             opt.step()
 
@@ -126,7 +136,9 @@ def train_vision_model(
             with torch.inference_mode():
                 logits = model(x)
                 loss = criterion(logits, y)
-            logits, y, losses = accelerator.gather_for_metrics((logits, y, loss.detach().expand(len(y))))
+            logits, y, losses = accelerator.gather_for_metrics(
+                (logits, y, loss.detach().expand(len(y)))
+            )
             total_loss += losses.sum()
             total_samples += len(y)
             acc.update(logits, y)

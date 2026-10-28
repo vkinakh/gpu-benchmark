@@ -7,7 +7,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from .utils import setup_logger
 
-
 # 10*10 Prompts. Source: https://www.penguin.co.uk/articles/2022/04/best-first-lines-in-books
 prompts_all = [
     "The King is dead. Long live the Queen.",

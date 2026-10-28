@@ -1,5 +1,11 @@
 import time
-from .runtime import initialize, training_batches, validation_batches, synthetic, TokenData
+from .runtime import (
+    initialize,
+    training_batches,
+    validation_batches,
+    synthetic,
+    TokenData,
+)
 
 from tqdm.auto import trange
 
@@ -7,7 +13,8 @@ import torch
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
+import os
 from transformers import DistilBertTokenizerFast
 from transformers import DistilBertForSequenceClassification, DistilBertConfig
 from accelerate import Accelerator
@@ -36,16 +43,21 @@ def train_language_model(
         start_model_loading = time.time()
     else:
         tokenizer = DistilBertTokenizerFast.from_pretrained(model_name)
-        imdb = load_dataset("imdb")
+        prepared = os.environ.get("GPUBENCH_TOKENIZED_DATA")
+        imdb = load_from_disk(prepared) if prepared else load_dataset("imdb")
 
         # Tokenize the dataset
         def tokenize_function(examples):
             return tokenizer(examples["text"], padding="max_length", truncation=True)
 
-        tokenized_datasets = imdb.map(tokenize_function, batched=True)
-        tokenized_datasets = tokenized_datasets.remove_columns(["text"])
+        tokenized_datasets = (
+            imdb if prepared else imdb.map(tokenize_function, batched=True)
+        )
+        if "text" in tokenized_datasets["train"].column_names:
+            tokenized_datasets = tokenized_datasets.remove_columns(["text"])
         tokenized_datasets.set_format("torch")
-        tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
+        if "label" in tokenized_datasets["train"].column_names:
+            tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
         data_loading_time = time.time() - start_time_data_loading
         logger.info(f"Data loading time: {data_loading_time:.3f} seconds")
 
@@ -54,7 +66,7 @@ def train_language_model(
     model_loading_time = time.time() - start_model_loading
     logger.info(f"Model loading time: {model_loading_time:.3f} seconds")
 
-    module_size = compute_module_sizes(model)[""]
+    module_size = sum(p.numel() for p in model.parameters())
     logger.info(f"Model size: {module_size / 1e6:.3f}M parameters")
 
     # Initialize optimizer
@@ -92,6 +104,8 @@ def train_language_model(
             with accelerator.autocast():
                 outputs = model(**batch)
                 loss = outputs.loss
+            if not torch.isfinite(loss):
+                raise RuntimeError("Non-finite training loss")
             accelerator.backward(loss)
             optimizer.step()
 
@@ -109,7 +123,9 @@ def train_language_model(
                 outputs = model(**batch)
 
             logits = outputs.logits
-            logits, labels, losses = accelerator.gather_for_metrics((logits, batch["labels"], outputs.loss.detach().expand(len(logits))))
+            logits, labels, losses = accelerator.gather_for_metrics(
+                (logits, batch["labels"], outputs.loss.detach().expand(len(logits)))
+            )
             total_eval_loss += losses.sum()
             total_samples += len(labels)
             acc.update(logits, labels)
