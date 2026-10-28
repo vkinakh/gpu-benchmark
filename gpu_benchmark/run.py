@@ -41,7 +41,7 @@ def run(args):
     out = Path(args.output_dir).resolve(); out.mkdir(parents=True, exist_ok=True)
     configuration = vars(args).copy(); configuration.pop('resume', None)
     try: commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-    except subprocess.CalledProcessError: commit = 'installed-wheel'
+    except subprocess.CalledProcessError: commit = os.environ.get('GPUBENCH_COMMIT', 'installed-wheel')
     identity = hashlib.sha256(json.dumps([commit, configuration], sort_keys=True).encode()).hexdigest()
     manifest = out / 'manifest.json'
     if manifest.exists():

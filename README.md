@@ -99,3 +99,12 @@ The script will create plots of system information:
 ```bash
 python plot_benchmark.py --csv_file=<path/to/csv/file> --output_dir=<path/to/output/directory>
 ```
+
+## Reproducible H200 runs
+
+Install Python 3.11 and the locked optional FP8 stack: `uv sync --frozen --extra fp8`.
+Run `uv run --frozen --extra fp8 python -m gpu_benchmark.profile smoke --output /path/to/smoke` before running the `full` profile.
+Full profiles require Imagenette at `data/imagenette2-320` (distinct train/val folders), and download/cache IMDb and pretrained models through Hugging Face.
+The runner accepts `--gpu-counts 1 2 3 4`, `--steps`, `--warmup-steps`, `--validation-steps`, `--repetitions`, `--synthetic`, and `--resume`.
+Every case has process/training logs, telemetry, metrics and explicit status. FP8 is limited to transformer workloads and uses torchao; compare it with the matched `bf16-compiled` mode. FP32 disables TF32, while TF32 explicitly permits it.
+The full performance matrix measures bounded steps, not convergence or complete epochs. Hardware results report dense compute, read+write device copy bandwidth, host transfers and NCCL payload bandwidth (including buffer reset).
