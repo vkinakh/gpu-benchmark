@@ -48,9 +48,9 @@ You can launch project scripts with [`uvx`](https://docs.astral.sh/uv/) without 
 
 From the repository root:
 ```bash
-uvx --from . benchmark.py --help
-uvx --from . run.py --help
-uvx --from . plot_benchmark.py --help
+uvx --python 3.11 --from . gpu-benchmark --help
+uvx --python 3.11 --from . gpu-benchmark-run --help
+uvx --python 3.11 --from . gpu-benchmark-plot --help
 ```
 
 ## Single Benchmark

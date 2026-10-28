@@ -10,3 +10,8 @@ temp_config.yaml
 *.log
 *.csv
 *.yaml
+
+.venv/
+build/
+dist/
+.pytest_cache/

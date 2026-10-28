@@ -4,16 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpu-benchmark"
-version = "0.1.0"
+version = "1.0.1"
 description = "GPU deep learning benchmarking scripts"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
+  "matplotlib",
+  "pyarrow>=14,<21",
   "accelerate==0.26.1",
-  "black==26.3.1",
   "datasets==2.16.1",
   "gputil==1.4.0",
-  "huggingface-hub==0.20.3",
+  "huggingface-hub>=0.24,<1",
   "multiprocess==0.70.15",
   "numpy==1.26.3",
   "pandas==2.2.0",
@@ -23,7 +24,6 @@ dependencies = [
   "requests==2.31.0",
   "safetensors==0.4.2",
   "six==1.16.0",
-  "sympy==1.12",
   "timm==0.9.12",
   "tokenizers==0.21.0",
   "torch==2.6.0",
@@ -33,14 +33,16 @@ dependencies = [
   "transformers==4.48.0",
 ]
 
-[tool.setuptools]
-py-modules = [
-  "benchmark",
-  "llm_inference",
-  "monitoring",
-  "plot_benchmark",
-  "run",
-  "train_language_models",
-  "train_vision_models",
-  "utils",
-]
+[project.scripts]
+gpu-benchmark = "gpu_benchmark.benchmark:main"
+gpu-benchmark-run = "gpu_benchmark.run:main"
+gpu-benchmark-plot = "gpu_benchmark.plot_benchmark:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "black==26.3.1"]
+
+[tool.setuptools.packages.find]
+include = ["gpu_benchmark*"]
+
+[tool.setuptools.package-data]
+gpu_benchmark = ["*.yaml"]

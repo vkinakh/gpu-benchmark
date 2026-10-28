@@ -11,7 +11,7 @@ dependencies:
     - black==26.3.1
     - datasets==2.16.1
     - gputil==1.4.0
-    - huggingface-hub==0.20.3
+    - huggingface-hub>=0.24,<1
     - multiprocess==0.70.15
     - numpy==1.26.3
     - pandas==2.2.0
@@ -21,7 +21,6 @@ dependencies:
     - requests==2.31.0
     - safetensors==0.4.2
     - six==1.16.0
-    - sympy==1.12
     - timm==0.9.12
     - tokenizers==0.21.0
     - torch==2.6.0
@@ -29,3 +28,6 @@ dependencies:
     - torchvision==0.21.0
     - tqdm==4.66.1
     - transformers==4.48.0
+
+    - matplotlib
+    - pyarrow>=14,<21
