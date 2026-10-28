@@ -61,7 +61,7 @@ def run(args):
     configuration.pop("resume", None)
     try:
         commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True
+            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
         ).strip()
     except subprocess.CalledProcessError:
         commit = os.environ.get("GPUBENCH_COMMIT", "installed-wheel")

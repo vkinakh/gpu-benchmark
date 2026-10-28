@@ -1,4 +1,5 @@
 import argparse
+from .runtime import synthetic
 
 from .train_vision_models import train_vision_model
 from .train_language_models import train_language_model
@@ -26,7 +27,7 @@ def main():
         if cli_args.model == "":
             raise ValueError("Model name not provided.")
 
-        if cli_args.data == "":
+        if cli_args.data == "" and not synthetic():
             raise ValueError("Path to data not provided.")
 
         if cli_args.classes == 0:

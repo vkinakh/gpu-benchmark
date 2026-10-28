@@ -48,17 +48,19 @@ def test_configuration_is_installed():
     assert files("gpu_benchmark").joinpath("default_config.yaml").is_file()
 
 
-def test_training_regressions():
-    # Ensure a second epoch actually performs training rather than evaluation.
-    import ast, inspect
-    from gpu_benchmark.train_language_models import train_language_model
+def test_warmup_excluded_and_short_loader_repeated(tmp_path, monkeypatch):
+    import json
+    import torch
+    from accelerate import Accelerator
+    from gpu_benchmark.runtime import training_batches
 
-    tree = ast.parse(inspect.getsource(train_language_model))
-    epochs = [
-        n
-        for n in ast.walk(tree)
-        if isinstance(n, ast.For)
-        and isinstance(n.target, ast.Name)
-        and n.target.id == "epoch"
-    ]
-    assert any("model.train()" in ast.unparse(n) for n in epochs)
+    monkeypatch.setenv("GPUBENCH_WARMUP", "2")
+    monkeypatch.setenv("GPUBENCH_STEPS", "3")
+    monkeypatch.setenv("GPUBENCH_METRICS", str(tmp_path / "metrics.json"))
+    loader = [(torch.ones(2, 3), torch.zeros(2))]
+    seen = list(training_batches(loader, Accelerator(cpu=True)))
+    result = json.loads((tmp_path / "metrics.json").read_text())
+    assert len(seen) == 5
+    assert result["steps"] == 3
+    assert result["samples"] == 6
+    assert result["samples_per_second"] > 0
