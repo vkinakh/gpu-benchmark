@@ -42,6 +42,17 @@ conda env create -f environment.yml
 
 For vision tasks, download ImageNet-like dataset, [imagenette](https://github.com/fastai/imagenette) - recommended
 
+### Run with uvx
+
+You can launch project scripts with [`uvx`](https://docs.astral.sh/uv/) without changing runtime code.
+
+From the repository root:
+```bash
+uvx --python 3.11 --from . gpu-benchmark --help
+uvx --python 3.11 --from . gpu-benchmark-run --help
+uvx --python 3.11 --from . gpu-benchmark-plot --help
+```
+
 ## Single Benchmark
 
 Prepare accelerate config [default_config.yaml](default_config.yaml).

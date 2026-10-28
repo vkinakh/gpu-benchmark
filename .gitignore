@@ -1,5 +1,6 @@
 .idea/
 __pycache__/
+*.egg-info/
 
 system_usage_log.csv
 temp_config.yaml
@@ -9,3 +10,8 @@ temp_config.yaml
 *.log
 *.csv
 *.yaml
+
+.venv/
+build/
+dist/
+.pytest_cache/
