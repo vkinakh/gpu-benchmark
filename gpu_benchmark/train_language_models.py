@@ -37,18 +37,18 @@ def train_language_model(
     else:
         tokenizer = DistilBertTokenizerFast.from_pretrained(model_name)
         imdb = load_dataset("imdb")
-    
+
         # Tokenize the dataset
         def tokenize_function(examples):
             return tokenizer(examples["text"], padding="max_length", truncation=True)
-    
+
         tokenized_datasets = imdb.map(tokenize_function, batched=True)
         tokenized_datasets = tokenized_datasets.remove_columns(["text"])
         tokenized_datasets.set_format("torch")
         tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
         data_loading_time = time.time() - start_time_data_loading
         logger.info(f"Data loading time: {data_loading_time:.3f} seconds")
-    
+
         start_model_loading = time.time()
         model = DistilBertForSequenceClassification.from_pretrained(model_name)
     model_loading_time = time.time() - start_model_loading

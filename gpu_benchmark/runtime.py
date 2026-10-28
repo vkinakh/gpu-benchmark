@@ -11,6 +11,18 @@ from accelerate.utils import set_seed
 
 def initialize():
     set_seed(int(os.environ.get('GPUBENCH_SEED', '42')))
+    precision = os.environ.get('GPUBENCH_PRECISION', 'fp32')
+    tf32 = precision == 'tf32'
+    torch.backends.cuda.matmul.allow_tf32 = tf32
+    torch.backends.cudnn.allow_tf32 = tf32
+    if precision in ('fp8', 'bf16-compiled'):
+        from accelerate.utils import TorchDynamoPlugin
+        kwargs = []
+        if precision == 'fp8':
+            from accelerate.utils import AORecipeKwargs
+            from torchao.float8 import Float8LinearConfig
+            kwargs = [AORecipeKwargs(config=Float8LinearConfig(pad_inner_dim=True))]
+        return Accelerator(kwargs_handlers=kwargs, dynamo_plugin=TorchDynamoPlugin(backend='inductor', use_regional_compilation=True))
     return Accelerator()
 
 

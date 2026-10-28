@@ -74,7 +74,7 @@ def run(args):
             GPUBENCH_SYNTHETIC=str(int(args.synthetic)),GPUBENCH_METRICS=str(folder/'metrics.json'),
             GPUBENCH_PRECISION=precision,OMP_NUM_THREADS='4',TOKENIZERS_PARALLELISM='false')
         config=dict(compute_environment='LOCAL_MACHINE',distributed_type='MULTI_GPU' if count>1 else 'NO',
-            mixed_precision={'fp32':'no','tf32':'no'}.get(precision,precision),num_processes=count,
+            mixed_precision={'fp32':'no','tf32':'no','bf16-compiled':'bf16'}.get(precision,precision),num_processes=count,
             num_machines=1,machine_rank=0,gpu_ids='all',use_cpu=False,rdzv_backend='static',same_network=True)
         import yaml
         config_path=folder/'accelerate.yaml'; config_path.write_text(yaml.safe_dump(config))
@@ -109,7 +109,7 @@ def main():
     p.add_argument('--tasks',nargs='+',choices=['vision','language'],default=['vision','language'])
     p.add_argument('--models',nargs='+',choices=VISION_MODELS,default=VISION_MODELS)
     p.add_argument('--gpu-counts',nargs='+',type=int,default=[1])
-    p.add_argument('--precisions',nargs='+',choices=['no','fp32','tf32','fp16','bf16','fp8'],default=['fp32','fp16','bf16'])
+    p.add_argument('--precisions',nargs='+',choices=['no','fp32','tf32','fp16','bf16','fp8','bf16-compiled'],default=['fp32','fp16','bf16'])
     p.add_argument('--steps',type=int,default=100);p.add_argument('--warmup-steps',type=int,default=10)
     p.add_argument('--validation-steps',type=int,default=25);p.add_argument('--repetitions',type=int,default=3)
     p.add_argument('--seed',type=int,default=42);p.add_argument('--synthetic',action='store_true');p.add_argument('--resume',action='store_true')
