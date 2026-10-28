@@ -1,4 +1,6 @@
 import time
+from pathlib import Path
+from .runtime import initialize, training_batches, validation_batches, synthetic
 
 from tqdm.auto import trange
 
@@ -41,12 +43,13 @@ def train_vision_model(
     if model_name not in MODEL_NAMES:
         raise ValueError("Invalid model name.")
 
+    accelerator = initialize()
     logger = setup_logger(log_filename)
 
     start_time_model_logging = time.time()
     model = timm.create_model(
         model_name,
-        pretrained=True,
+        pretrained=not synthetic(),
         num_classes=n_classes,
     )
     model_loading_time = time.time() - start_time_model_logging
@@ -55,7 +58,6 @@ def train_vision_model(
     module_size = compute_module_sizes(model)[""]
     logger.info(f"Model size: {module_size / 1e6:.3f}M parameters")
 
-    accelerator = Accelerator()
 
     trans_train = transforms.Compose(
         [
@@ -75,8 +77,8 @@ def train_vision_model(
         ]
     )
 
-    ds_train = datasets.ImageFolder(path_to_data, transform=trans_train)
-    ds_val = datasets.ImageFolder(path_to_data, transform=trans_val)
+    ds_train = datasets.FakeData(size=4096, num_classes=n_classes, transform=trans_train) if synthetic() else datasets.ImageFolder(Path(path_to_data) / "train", transform=trans_train)
+    ds_val = datasets.FakeData(size=4096, num_classes=n_classes, transform=trans_val, random_offset=4096) if synthetic() else datasets.ImageFolder(Path(path_to_data) / "val", transform=trans_val)
 
     dl_train = DataLoader(
         ds_train,
@@ -102,7 +104,7 @@ def train_vision_model(
     for epoch in trange(num_epochs, desc="Epoch"):
         start_time_training_epoch = time.time()
         model.train()
-        for x, y in dl_train:
+        for x, y in training_batches(dl_train, accelerator):
             opt.zero_grad()
             with accelerator.autocast():
                 # Forward pass in autocast mode
@@ -118,16 +120,17 @@ def train_vision_model(
         start_time_eval_epoch = time.time()
         model.eval()
         total_loss = 0
+        total_samples = 0
         acc = Accuracy(task="multiclass", num_classes=n_classes).to(accelerator.device)
-        for x, y in dl_val:
+        for x, y in validation_batches(dl_val):
             with torch.inference_mode():
                 logits = model(x)
                 loss = criterion(logits, y)
-            losses = accelerator.gather(loss)
-            total_loss += torch.mean(losses)
+            logits, y, losses = accelerator.gather_for_metrics((logits, y, loss.detach().expand(len(y))))
+            total_loss += losses.sum()
+            total_samples += len(y)
             acc.update(logits, y)
-        total_loss = torch.mean(accelerator.gather(total_loss))
-        total_loss /= len(dl_val)
+        total_loss /= total_samples
         logger.info(f"Epoch {epoch}. Loss: {total_loss}, acc: {acc.compute()}")
         acc.reset()
         eval_epoch_time = time.time() - start_time_eval_epoch
